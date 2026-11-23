@@ -1,6 +1,6 @@
 # tools.py
 """
-Utility functions for email dataset preparation, analysis, plotting and modeling.
+Helferfunktionen zur Aufbereitung und Analyse des E-Mail-Datensatzes.
 
 Designed to be imported into a Colab notebook:
 from tools import (
@@ -31,8 +31,6 @@ from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import classification_report, confusion_matrix, ConfusionMatrixDisplay, accuracy_score
 from sklearn.base import BaseEstimator
 
-# ---------------- Defaults / small dictionaries ----------------
-# Extend COMMON_NAMES if you want name-stripping
 COMMON_NAMES: set = set()  # e.g. {"max", "mustermann", ...}
 
 GERMAN_STOPWORDS = {
@@ -42,7 +40,6 @@ GERMAN_STOPWORDS = {
 }
 STOP_WORDS = ENGLISH_STOP_WORDS.union(GERMAN_STOPWORDS)
 
-# ---------------- I/O / Data preparation ----------------
 def load_excel(path: str, sheet_name: Optional[str]=0) -> pd.DataFrame:
     """Load an Excel file into a DataFrame."""
     return pd.read_excel(path, sheet_name=sheet_name)
@@ -75,14 +72,12 @@ def prepare_df(
     if order:
         df["Klassen-Label"] = pd.Categorical(df["Klassen-Label"], categories=order, ordered=True)
 
-    # Ensure columns exist and combine subject+text into Email
     subj = df.get(subject_col, pd.Series([""] * len(df)))
     txt = df.get(text_col, pd.Series([""] * len(df)))
     df[combine_col_name] = "Betreff: " + subj.fillna("").astype(str) + " Nachrichtentext: " + txt.fillna("").astype(str)
 
     return df
 
-# ---------------- small helpers ----------------
 def choose_text_column(df: pd.DataFrame, candidates: List[str]) -> str:
     for c in candidates:
         if c in df.columns:
@@ -99,7 +94,6 @@ def strip_common_german_names(text: str, common_names: Optional[set]=None) -> st
     cleaned = [tok for tok in tokens if tok.lower() not in common_names]
     return " ".join(cleaned)
 
-# ---------------- plotting: counts & top words ----------------
 def plot_class_counts(
     df: pd.DataFrame,
     label_col: str = "Klassen-Label",
@@ -128,7 +122,6 @@ def plot_class_counts(
         plt.show()
     plt.close()
     
-# Example: your combined stopword set
 GERMAN_STOPWORDS = {
     "und","der","die","das","in","den","von","mit","ist","ich","nicht","zu","für","auf",
     "ein","eine","im","dem","an","als","auch","am","sind","hat","war","oder","wir",
@@ -240,7 +233,6 @@ def plot_most_common_by_class(
         plt.show()
     plt.close()
 
-# ---------------- analyze HTML/URLs/length ----------------
 HTML_RE = re.compile(r"<\/?[a-zA-Z][^>]*>")
 URL_RE = re.compile(r"(https?://[^\s]+|www\.[^\s]+)", flags=re.IGNORECASE)
 
@@ -318,7 +310,6 @@ def analyze_email_html_urls_length(
     if out_summary_csv:
         summary_df.to_csv(out_summary_csv, index=False, encoding="utf-8")
 
-    # quick plots
     if show:
         plt.figure(figsize=(10,4))
         plt.bar(summary_df[label_col], summary_df["pct_with_html"])
@@ -352,12 +343,10 @@ def analyze_email_html_urls_length(
             plt.savefig(plot_prefix + "median_chars_by_class.png", bbox_inches="tight", dpi=150)
         plt.show()
         plt.close()
-
-    # cleanup temporary cols in returned df2 (not strictly necessary)
+        
     df2.drop(columns=["_text_clean","_has_html","_has_url","_char_len","_token_len"], errors="ignore", inplace=True)
     return #summary_df
 
-# ---------------- vocabulary helpers ----------------
 def tokenize(text: str, stop_words: Optional[set]=None) -> List[str]:
     if not isinstance(text, str):
         return []
@@ -387,7 +376,6 @@ from sklearn.feature_extraction.text import ENGLISH_STOP_WORDS
 top_n = 20
 seed = 12
 
-# Simple German stopwords (extend as needed)
 GERMAN_STOPWORDS = {
     "und","der","die","das","in","den","von","mit","ist","ich","nicht","zu","für","auf",
     "ein","eine","im","dem","an","als","auch","am","sind","hat","war","oder","wir",
@@ -416,7 +404,6 @@ def exclusive_words_by_category(df, text_col="Nachrichtentext", label_col="Klass
         other_vocab = set().union(*(class_vocab[l] for l in labels if l != label))
         exclusives[label] = list(class_vocab[label] - other_vocab)
     
-    # Print random samples per class
     print("\n=== Zufällig ausgewählte exklusive Wörter pro Klasse ===")
     for label, words in exclusives.items():
         n_words = len(words)
@@ -593,8 +580,7 @@ def top_tokens_per_class(best_model: BaseEstimator, class_names: List[str], n_sh
         top_tokens = [feature_names[j] for j in top_idx]
         results[label] = top_tokens
     return results
-
-# ---------------- prediction helper ----------------
+    
 def predict_email(df, index, model, class_names, text_column):
     """
     Predict the class and probabilities for a given email in a DataFrame.
@@ -790,7 +776,7 @@ def build_pipeline(max_features: int = 30000,
     return pipeline
 
 
-# ---------- Train / evaluate (renamed to xgboost_classifier) ----------
+# ---------- Train / evaluate ----------
 def xgboost_classifier(df: Union[pd.DataFrame, str],
                        text_col: str = "text",
                        label_col: str = "label",
